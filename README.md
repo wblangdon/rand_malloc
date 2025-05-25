@@ -1,5 +1,5 @@
 Compile with GNU GCC compiler (will need tweaks to run on other versions of malloc).
-
+```
 Run on command line:
   1st argument is seed for pseudo random number generator (optional)
   2nd argument is number of malloc blocks to try (default 1)
@@ -14,3 +14,4 @@ Run on command line:
   2178301 is the number of simulated ticks (each malloc is one tick).
   Max_malloc 670189 is the peak number of useful bytes (created by malloc).
   peak_malloc 811008 is the maximum size of the heap (as reported by mallinfo2).
+'''
