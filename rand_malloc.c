@@ -13,6 +13,7 @@
 */
 
 /*Modifications:
+ *WBL 29 May 2025 Display last random number
  *WBL 25 May 2025 speed up by using time[] as back pointer(s). Add peak_malloc
  *WBL 18 May 2025 Add malloc_info and statm
  *WBL 18 May 2025 Add peak use instrumentation
@@ -246,7 +247,7 @@ int F(double* f, const double ff){
 int main(int argc, char ** argv) {
   const int seed  = (argc>1)? atoi(argv[1]) : 17082132;
   const int total = (argc>2)? atoi(argv[2]) : 1;
-  printf("%s $Revision: 1.33 $ seed=%d %d %dx%d ",
+  printf("%s $Revision: 1.34 $ seed=%d %d %dx%d ",
 	 argv[0],seed,total,SIZE,WIDTH);
   //based on Linux man-pages 6.04 2023-03-30 gnu_get_libc_version(3)
   printf("glibc %s ", gnu_get_libc_version());
@@ -255,11 +256,13 @@ int main(int argc, char ** argv) {
   memset(use, 0,SIZE*sizeof(int*));
   memset(time,0xff,SIZE*WIDTH*sizeof(int));
   int last = 0;
+  int last_rand = -1;
   for(int i=0;i<=Max && i<SIZE;Free(),i++){
     Time = i;
     if((i%100000) == 0 || last != Max_malloc){last = Max_malloc; stats();}
     if(i>=total) continue;
-    double f = rand()/(double)RAND_MAX;
+    last_rand = rand();
+    double f = last_rand/(double)RAND_MAX;
          if(F(&f,0.0946823)) Add2(16,12980.2); 
     else if(F(&f,0.0946823)) Add (27,260); 
     else if(F(&f,0.253535 )) Add2(32,3764.55); 
@@ -274,7 +277,7 @@ int main(int argc, char ** argv) {
     else {printf("OPPS %f\n",f); return 1;}
   }
   stats();
-  printf("%d Max_malloc %d bytes\n",Time,Max_malloc);
+  printf("%d Max_malloc %d bytes (last random number %d)\n",Time,Max_malloc,last_rand);
   //format answer like malloc_info.awk r1.6
   printf("peak_malloc %d bytes\n",peak_malloc);
   return 0;
