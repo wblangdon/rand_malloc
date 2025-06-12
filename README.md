@@ -13,17 +13,23 @@ Run on command line:
     Last free at 11999310, malloc event limit 3502077
     Total allocated 396816157, 3502077 mallocs 3463129 frees, Max_malloc 34411437 bytes, 10158805 still on heap
     peak_malloc 37216256 bytes
+```
 
   10000001 is the number of simulated ticks (each malloc is one tick). In this example, limited by internal SIZE.
+
   Max_malloc 34411437 is the peak number of useful bytes (created by malloc).
+
   peak_malloc 37216256 is the maximum size of the heap (as reported by mallinfo2).
 
   396816157 is the total number of bytes allocated.
+
   3502077 is the number of times malloc is called (given on the command line).
   Notice, in this run, although we pass the peak heap used, we do not have enough space to complete
   all the free() calls (only 3463129 malloc blocks life times expire). Thus 10158805 are still allocated
   on the heap before the program ends.
+  
   maxwidth 12 says at atleast one simulation step 12 malloc blocks expired at the same time (here limit 20).
+  
   The last psuedo random number is reported in case in future different implementations
   produce different values for the same seed.
 
