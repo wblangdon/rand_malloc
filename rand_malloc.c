@@ -1,5 +1,6 @@
 /* WB Langdon UCL.AC.UK 17 May 2025 generate sequence of malloc and free */
 
+/*PATH /opt/rh/devtoolset-10/root/usr/bin:"$PATH" */
 /*compile gcc -g -o rand_malloc -O3 rand_malloc.c */
 /*run: rand_malloc seed times */
 
@@ -10,9 +11,16 @@
   To reduce volume of output, at compilation time,
   Malloc_info() display_mallinfo2() or display_mallinfo() and pstatm()
   can be excluded from stats() output.
+
+  ok to ignore gcc -fvar-tracking-assignments warning
 */
 
 /*Modifications:
+ *WBL  8 Jun 2025 bugfix add R() (note dhat_summary.awk r1.40 all type 1)
+ *WBL  5 Jun 2025 Replace if/else with order
+ *WBL  5 Jun 2025 dhat_summary.awk r1.31 tried deterministic order for DHAT's node with 1 block
+ *WBL  3 Jun 2025 increase SIZE, thrsh for speedup
+ *WBL  2 Jun 2025 Addr, settime bounds check
  *WBL 29 May 2025 Display last random number
  *WBL 25 May 2025 speed up by using time[] as back pointer(s). Add peak_malloc
  *WBL 18 May 2025 Add malloc_info and statm
@@ -26,23 +34,6 @@
 #include <assert.h>
 
 #include <gnu/libc-version.h>
-
-//line1419 39456 blocks avg size 512 bytes, avg lifetime 3612.22 instrs
-/*
-gawk '{N[$6]++;total+=$2;block[$6]+=$2;life[$6]+=$10}END{for(i in N)print i,block[i],block[i]/total,life[i]/N[i];print "total",total}' dhat.8983.dat
-16 203864 0.0946823 12980.2
-27 203864 0.0946823 260.05
-32 545895 0.253535 3764.55
-48 119709 0.0555975 233
-64 159165 0.0739224 3604.25
-65 203726 0.0946182 77
-72 159166 0.0739228 5513.67
-96 159165 0.0739224 3682.25
-168 119709 0.0555975 14756.3
-272 119709 0.0555975 15255
-512 159165 0.0739224 3529.25
-total 2153137
-*/
 
 //based on test_prog.c r1.22
 /*https://man7.org/linux/man-pages/man3/malloc_info.3.html*/
@@ -108,17 +99,23 @@ void pstatm(void) {
 }
 //end ~/assugi/z3/z3-master/src/shell/main.cpp
 
-#define SIZE 3145728
-#define WIDTH 10
+#define SIZE 10000000
+#define WIDTH 20
 
 int I = 0;
 int Time = 0;
 int Max = 0; //time of last block to free
 int* use[SIZE];
 int  time[SIZE*WIDTH];
+
+#include "order.c"
+
 //accounting info
 int Malloc = 0; //bytes on heap
 int Max_malloc = 0;
+long long int Talloc = 0;
+int Nalloc = 0;
+int Nfree = 0;
 int Size[SIZE];
 int peak_malloc = 0;
 
@@ -158,29 +155,47 @@ void stats(){
 #endif
 }
 
-int Rand(const int mean){
+int Rand(const double mean){
   const double i5 = (double)rand() + (double)rand() +
                     (double)rand() + (double)rand() + (double)rand();
-  const double ans = (i5*mean)/(RAND_MAX*2.5);
-  //printf("Rand(%d) %g %g\n",mean,i5,ans);
-  return 0.5+ans;
+  const double a = (i5*mean)/(RAND_MAX*2.5);
+  const int  ans = (mean>=1.0 && a < 1.0)? 1 : (int)(0.5+a);
+  //printf("Rand(%g) %g %d\n",mean,i5/(RAND_MAX*5.0),ans);
+  assert(a>0.0);
+  return ans;
 }
 
+int last_settime = 0;
+int maxwidth     = -1;
 int settime(const int index, const int value){
-  assert(index>=0 && index < SIZE);
+  assert(index>=0);
   assert(value>=0);
+  if(index >= SIZE) {
+    last_settime = index;
+    return 0; //HACK ignore stuff in far future...
+  }
   for(int i=0;i<WIDTH;i++){
     const int x = index*WIDTH + i;
-    if(time[x] == -1) {time[x] = value; return i;} //i only for debug
+    if(time[x] == -1) {time[x] = value;
+#ifdef DEBUG
+      printf("settime(%d,%d) time[%d]=%d\n",index,value,x,time[x]);
+#endif /*DEBUG*/
+      if(i>maxwidth) maxwidth=i;
+      return i; //i only for debug
+    }
   }
   fprintf(stderr, "settime(%d,%d) all %d space used\n",index,value,WIDTH);
   exit(1);
 }
 int gettime(const int index, const int idx2){
-  assert(index>=0 && index < SIZE);
+  assert(index>=0);
   assert(idx2 >=0);
-  if(idx2>=WIDTH) return -1;
+  if(index >= SIZE) return -1; //nothing stored past end of time array
+  if(idx2 >= WIDTH) return -1; //idx2 == WIDTH means end of data in time[index,idx2]
   const int x = index*WIDTH + idx2;
+#ifdef DEBUG
+  if(index<15) printf("gettime(%d,%d) time[%d]=%d\n",index,idx2,x,time[x]);
+#endif /*DEBUG*/
   return time[x];
 }
 
@@ -189,7 +204,12 @@ void add(const int size, const int life, const char* text){
 #else
 void add(const int size, const int life){
 #endif /*DEBUG*/
+  assert(size >  0);
+  assert(life >= 0);
+  assert(I >= 0 && I < SIZE);
   use[I]  = malloc(size);
+  Talloc += size;
+  Nalloc++;
   const int t = Time+life;
   const int i = settime(t,I);
   if(t > Max) Max = t;
@@ -220,19 +240,36 @@ void Add2(const int size, const double life){
 #endif /*DEBUG*/
 }
 
+void Addr(const double size, const double life){
+#ifdef DEBUG
+  char buf[80]; sprintf(buf,"Addr(%g,%g)",size,life);
+  add(Rand(size),Rand(life),buf);
+#else
+  add(Rand(size),Rand(life));
+#endif /*DEBUG*/
+}
+
+int lasttime = -1; //sanity check only
 void Free(void){
+#ifdef DEBUG
+  if(lasttime+1 != Time || Time<15) {
+    printf("Free() Time %d lasttime %d\n",Time,lasttime); fflush(stdout);}
+#endif /*DEBUG*/
+  assert(lasttime+1 == Time); lasttime = Time;
   int i;
   for(int x=0;(i=gettime(Time,x))>=0;x++){
-    assert(i<SIZE);
+#ifdef DEBUG
+    printf("free Time %d time[%d,%d]=%d Size[%d]=%d Malloc=%d Max_malloc %d\n",
+	   Time,Time,x,i,i,Size[i],Malloc,Max_malloc); fflush(stdout);
+#endif /*DEBUG*/
+    assert(i>= 0 && i<SIZE);
     assert(x<=WIDTH);
     assert(i>=0 && i <= Time);
+    assert(use[i]);
     Malloc -= Size[i];
     free(use[i]);
+    Nfree++;
     use[i]  = NULL;
-#ifdef DEBUG
-    printf("Time %d free   time[%d,%d]=%d Malloc=%d Max_malloc %d\n",
-	   Time,Time,x,i,Malloc,Max_malloc);
-#endif /*DEBUG*/
     assert(Malloc >= 0);
   }
 }
@@ -244,40 +281,53 @@ int F(double* f, const double ff){
   return ans;
 }
 
+int R(const double x) {return 0.5+x;}
 int main(int argc, char ** argv) {
   const int seed  = (argc>1)? atoi(argv[1]) : 17082132;
   const int total = (argc>2)? atoi(argv[2]) : 1;
-  printf("%s $Revision: 1.34 $ seed=%d %d %dx%d ",
-	 argv[0],seed,total,SIZE,WIDTH);
+  const int thrsh = (argc>3)? atoi(argv[3]) : 0; //speed up by not calling stats before thrsh
+  printf("%s $Revision: 1.36 $ seed=%d %d %d %dx%d %d ",
+	 argv[0],seed,total,thrsh,SIZE,WIDTH,norder);
   //based on Linux man-pages 6.04 2023-03-30 gnu_get_libc_version(3)
   printf("glibc %s ", gnu_get_libc_version());
   printf("%s\n",      gnu_get_libc_release());
   if(seed>0) srand(seed);
   memset(use, 0,SIZE*sizeof(int*));
   memset(time,0xff,SIZE*WIDTH*sizeof(int));
+  //#include "probabilities.c"
+  //#include "x.c"
   int last = 0;
-  int last_rand = -1;
-  for(int i=0;i<=Max && i<SIZE;Free(),i++){
-    Time = i;
-    if((i%100000) == 0 || last != Max_malloc){last = Max_malloc; stats();}
-    if(i>=total) continue;
-    last_rand = rand();
-    double f = last_rand/(double)RAND_MAX;
-         if(F(&f,0.0946823)) Add2(16,12980.2); 
-    else if(F(&f,0.0946823)) Add (27,260); 
-    else if(F(&f,0.253535 )) Add2(32,3764.55); 
-    else if(F(&f,0.0555975)) Add (48,233); 
-    else if(F(&f,0.0739224)) Add2(64,3604.25); 
-    else if(F(&f,0.0946182)) Add (65,77); 
-    else if(F(&f,0.0739228)) Add2(72,5513.67); 
-    else if(F(&f,0.0739224)) Add2(96,3682.25); 
-    else if(F(&f,0.0555975)) Add2(168,14756.3); 
-    else if(F(&f,0.0555975)) Add2(272,15255); 
-    else if(F(&f,0.0739224)) Add2(512,3529.25); 
-    else {printf("OPPS %f\n",f); return 1;}
+  int i=0;
+  for(;(i<norder || Time<=Max) && i<SIZE;i++){
+    //printf("i %d, Time %d, Max %d, total %d, norder %d, SIZE %d\n",i,Time,Max,total,norder,SIZE);
+    if((i%100000) == 0 || last != Max_malloc) {
+      last = Max_malloc; if(Max_malloc>=thrsh) stats();
+    }
+    if(i < total && i < norder) {
+    //printf("order[%d] %d,%f,%f\n",
+    //	     i,order[i].type,order[i].size,order[i].life);
+    switch(order[i].type){
+    case 1:{ Add (R(order[i].size),R(order[i].life)); break;}
+    case 2:{ Add2(R(order[i].size),  order[i].life);  break;}
+    case 3:{ Addr(  order[i].size,   order[i].life);  break;}
+    default:
+      fprintf(stderr, "order[%d] bad type %d\n",i,order[i].type);
+      exit(1);
+    }}
+    Free(); Time++;
   }
+  //printf("end loop ");
+  //printf("i %d, Time %d, Max %d, total %d, norder %d, SIZE %d\n",i,Time,Max,total,norder,SIZE);
   stats();
-  printf("%d Max_malloc %d bytes (last random number %d)\n",Time,Max_malloc,last_rand);
+  if(last_settime < 0 || last_settime >= SIZE) {
+    printf("settime index %d out of bounds %d (not all heap will be freed)\n",
+	   last_settime,SIZE);
+  }
+  const int last_rand = rand();
+  printf("%d steps (maxwidth %d, last random number %d)\n",Time+1,maxwidth+1,last_rand);
+  printf("Last free at %d, malloc event limit %d\n",Max,norder);
+  printf("Total allocated %lld, %d mallocs %d frees, Max_malloc %d bytes, %d still on heap\n",
+	 Talloc,Nalloc,Nfree,Max_malloc,Malloc);
   //format answer like malloc_info.awk r1.6
   printf("peak_malloc %d bytes\n",peak_malloc);
   return 0;
