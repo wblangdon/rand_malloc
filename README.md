@@ -1,4 +1,4 @@
-Uncompress order.c compile and link with GNU GCC compiler.
+Uncompress order.c Compile rand_malloc.c with GNU GCC compiler.
 ```
 Run on command line:
   1st argument is seed for pseudo random number generator (optional)
