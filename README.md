@@ -15,7 +15,7 @@ Run on command line:
     peak_malloc 37216256 bytes
 ```
 
-  10000001 is the number of simulated ticks (each malloc is one tick). In this example, limited by internal SIZE.
+  10000001 is the number of simulated ticks (each malloc is one tick). In this example, limited by internal SIZE (10,000,000).
 
   Max_malloc 34411437 is the peak number of useful bytes (created by malloc).
 
@@ -25,10 +25,10 @@ Run on command line:
 
   3502077 is the number of times malloc is called (given on the command line).
   Notice, in this run, although we pass the peak heap used, we do not have enough space to complete
-  all the free() calls (only 3463129 malloc blocks life times expire). Thus 10158805 are still allocated
-  on the heap before the program ends.
+  all the free() calls (only 3463129 malloc blocks life times expire).
+  Thus 10,158,805 bytes are still allocated in the heap when the program ends.
   
-  maxwidth 12 says at atleast one simulation step 12 malloc blocks expired at the same time (here limit 20).
+  maxwidth 12 says in atleast one simulation step 12 malloc blocks expired at the same time (limited by WIDTH 20).
   
   The last psuedo random number is reported in case in future different implementations
   produce different values for the same seed.
@@ -40,4 +40,4 @@ Linux valgrind supplies dh_view.html (and dh_view.css and dh_view.js) to process
 The valgrind's version of dh_view.js combines data for less used malloc. Here dh_view.js treats all malloc blocks as significant.
 The gawk script dhat_summary.awk is used to create order.c
 
-Note in different releases of valgrind the dhat.<pid>.dat file may have different formats.
+Note in different releases of valgrind the dhat.\<pid\>.dat file may have different formats.
