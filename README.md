@@ -1,4 +1,4 @@
-Compile with GNU GCC compiler (will need tweaks to run on other versions of malloc).
+Compile and link with GNU GCC compiler.
 ```
 Run on command line:
   1st argument is seed for pseudo random number generator (optional)
