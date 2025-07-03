@@ -41,3 +41,7 @@ The default version of dh_view.js combines data for less important malloc calls.
 The gawk script dhat_summary.awk is used to create order.c
 
 Note in different releases of valgrind the dhat.dat.\<pid\> file may have different formats.
+
+rand_malloc will be presented at UKCI 2025 the 24th UK Workshop in Computational Intelligence,
+September 3-5, 2025, Napier University, https://ukci2025.napier.ac.uk/
+
