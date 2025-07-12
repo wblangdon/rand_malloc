@@ -44,4 +44,16 @@ Note in different releases of valgrind the dhat.dat.\<pid\> file may have differ
 
 rand_malloc will be presented at UKCI 2025 the 24th UK Workshop in Computational Intelligence,
 September 3-5, 2025, Napier University, https://ukci2025.napier.ac.uk/
-
+```
+@InProceedings{Langdon:2025:UKCI,
+    author = "William B. Langdon",
+    title = "A Genetic Improvement Parameter Benchmark: rand\_malloc.c",
+    booktitle = "24th UK Workshop on Computational Intelligence (UKCI 2025)",
+    year = "2025",
+    editor = "Emma Hart and Sarah L. Thomson and Zhiyuan Tan and Tomas Horvath and Neil Urquhart and Kehinde Babaagba",
+    address = "Edinburgh Napier University",
+    month = "3--5 " # sep,
+    url = {http://www.cs.ucl.ac.uk/staff/W.Langdon/ftp/papers/Langdon_2025_UKCI.pdf},
+    code_url = "https://github.com/wblangdon/rand_malloc",
+    size = "6 pages",
+}
