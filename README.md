@@ -51,6 +51,7 @@ September 3-5, 2025, Napier University, https://ukci2025.napier.ac.uk/
     booktitle = "24th UK Workshop on Computational Intelligence (UKCI 2025)",
     year = "2025",
     editor = "Emma Hart and Tomas Horvath and Zhiyuan Tan and Sarah Thomson",
+    pages = {127--132},
     address = "Edinburgh Napier University",
     month = "3--5 " # sep,
     publisher = {Springer},
